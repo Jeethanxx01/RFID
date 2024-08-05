@@ -1,0 +1,74 @@
+// See https://github.com/bxparks/AUniter/tree/develop/jenkins for
+// a description of AUniter integration with Jenkins.
+//
+// The following variables are used:
+//
+//  * AUNITER_ARDUINO_BINARY - defined in the Jenkins system configuration
+//  * WORKSPACE - automatically filled in by Jenkins
+//  * BOARDS - defined in the "This project is parameterized" section of the
+//    Jenkins Pipeline configuration
+//  * BADGE_BUCKET - defined in "This project is parameterized" section.
+//
+pipeline {
+    agent { label 'master' }
+    stages {
+        stage('Setup') {
+            steps {
+                dir('AUniter') {
+                    git url: 'https://github.com/bxparks/AUniter',
+                        branch: 'develop'
+                }
+                dir('libraries/AUnit') {
+                    git url: 'https://github.com/bxparks/AUnit',
+                        branch: 'develop'
+                }
+                dir('libraries/AceRoutine') {
+                    git url: 'https://github.com/bxparks/AceRoutine',
+                        branch: 'develop'
+                }
+                dir('libraries/AceTimeTools') {
+                    git url: 'https://github.com/bxparks/AceTimeTools',
+                        branch: 'master'
+                }
+                dir('libraries/AceTimeValidation') {
+                    git url: 'https://github.com/bxparks/AceTimeValidation',
+                        branch: 'master'
+                }
+                dir('libraries/EpoxyDuino') {
+                    git url: 'https://github.com/bxparks/EpoxyDuino',
+                        branch: 'develop'
+                }
+                dir('libraries/tz') {
+                    git url: 'https://github.com/eggert/tz',
+                        branch: 'master'
+                }
+                dir('libraries/date') {
+                    git url: 'https://github.com/HowardHinnant/date',
+                        branch: 'master'
+                }
+            }
+        }
+        stage('Verify Tests') {
+            steps {
+                sh "make -C libraries/AceTime/tests tests"
+                sh "make -C libraries/AceTimeTools/compare_java"
+                sh "make -C libraries/AceTimeTools/compare_cpp"
+                sh "make -C libraries/AceTimeValidation tests"
+            }
+        }
+        stage('Test') {
+            steps {
+                sh "make -C libraries/AceTime/tests runtests"
+                sh "make -C libraries/AceTimeValidation runtests"
+                sh "cd libraries/AceTimeTools; python3 -m unittest"
+            }
+        }
+    }
+    post {
+        always {
+            sh "make -C libraries/AceTime/tests clean"
+            sh "make -C libraries/AceTimeTools clean"
+            sh "make -C libraries/AceTimeValidation clean"
+        }
+    }
+}
